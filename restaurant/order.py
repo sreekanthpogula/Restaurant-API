@@ -1,6 +1,7 @@
 from flask import (
     Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
 )
+import json
 from werkzeug.exceptions import abort
 
 from restaurant.auth import login_required
@@ -8,13 +9,17 @@ from restaurant.db import get_db
 
 bp = Blueprint('blog', __name__)
 
-menucard = [{'Item': 'Rice', 'Price': 150}, {'Item': 'Dal', 'Price': 125}, {'Item': 'Chicken', 'Price': 200}, {
-    'Item': 'Mutton', 'Price': 450}, {'Item': 'Fish', 'Price': 300}, {'Item': 'IceCream', 'Price': 199}, {'Item': 'manchurian', 'Price': 75}, {'Item': 'noodles', 'Price': 90}, {'Item': 'ChickenNoodles', 'Price': 175}, {
-    'Item': 'EggNoodles', 'Price': 100}, {'Item': 'FishFry', 'Price': 300}, {'Item': 'Thumbsup', 'Price': 90}]
+# d = [{'Item': 'Rice', 'Price': 150}, {'Item': 'Dal', 'Price': 125}, {'Item': 'Chicken', 'Price': 200}, {
+#     'Item': 'Mutton', 'Price': 450}, {'Item': 'Fish', 'Price': 300}, {'Item': 'IceCream', 'Price': 199}, {'Item': 'manchurian', 'Price': 75}, {'Item': 'noodles', 'Price': 90}, {'Item': 'ChickenNoodles', 'Price': 175}, {
+#     'Item': 'EggNoodles', 'Price': 100}, {'Item': 'FishFry', 'Price': 300}, {'Item': 'Thumbsup', 'Price': 90}]
+
+with open('data.json') as f:
+    d = json.load(f)
 orders = []
 
 
 @bp.route('/hello')
+@login_required
 def hello():
     db = get_db()
     orders = db.execute(
@@ -25,7 +30,8 @@ def hello():
     return render_template('order/index.html', orders=orders)
 
 
-@bp.route("/order")
+@bp.route("/")
+@login_required
 def hello_restaurant():
     response = jsonify(
         'Welcome, To the Restaurant Appliaction, YOU CAN ORDER NOW!')
@@ -36,7 +42,7 @@ def hello_restaurant():
 @bp.route('/order/showmenu')
 @login_required
 def show_menu():
-    response = jsonify({'Menu': menucard})
+    response = jsonify({'Menu': d})
     response.status_code = 200
     return response
 
@@ -45,21 +51,21 @@ def show_menu():
 @login_required
 def create_order(id):
     response = {}
-    if id < len(menucard) and menucard[id] not in orders:
-        d = menucard[id]
+    if id < len(d) and d[id] not in orders:
+        d = d[id]
         d['Quantity'] = 1
         orders.append(d)
         response = jsonify({'Status': 'Added', 'Item': d})
         response.status_code = 200
-    elif id >= len(menucard):
+    elif id >= len(d):
         response = jsonify({'Status': 'Not in menu'})
         response.status_code = 404
-    elif menucard[id] in orders:
+    elif d[id] in orders:
         for i in orders:
-            if i['Item'] == menucard[id]['Item']:
+            if i['Item'] == d[id]['Item']:
                 i['Quantity'] += 1
         response = jsonify(
-            {'Status': 'Updated quantity', 'Item': menucard[id]})
+            {'Status': 'Updated quantity', 'Item': d[id]})
         response.status_code = 200
     return response
 # @bp.route('/create', methods=('GET', 'POST'))
@@ -190,11 +196,11 @@ def delete_order(delid):
 def edit_menu():
     item = {'Item': 'New Item', 'Price': 15}
     f = False
-    for i in menucard:
+    for i in d:
         if i == item:
             f = True
     if not f:
-        menucard.append(item)
+        d.append(item)
         response = jsonify(
             {'Status': 'New Item Added Successfully', 'Item': item})
         response.status_code = 201
@@ -206,10 +212,10 @@ def edit_menu():
 
 @bp.route('/order/cancel', methods=['DELETE'])
 def delete_from_menu():
-    item = menucard[2]
-    for i in menucard:
+    item = d[2]
+    for i in d:
         if i == item:
-            menucard.remove(i)
+            d.remove(i)
             response = jsonify({'Status': 'Cancelled', 'Item': item})
             response.status_code = 200
             return response

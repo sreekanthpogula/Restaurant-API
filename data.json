@@ -1,0 +1,52 @@
+{
+    "menucard": [
+      {
+        "Item": "Rice",
+        "Price": 150
+      },
+      {
+        "Item": "Dal",
+        "Price": 125
+      },
+      {
+        "Item": "Chicken",
+        "Price": 200
+      },
+      {
+        "Item": "Mutton",
+        "Price": 450
+      },
+      {
+        "Item": "Fish",
+        "Price": 300
+      },
+      {
+        "Item": "IceCream",
+        "Price": 199
+      },
+      {
+        "Item": "manchurian",
+        "Price": 75
+      },
+      {
+        "Item": "noodles",
+        "Price": 90
+      },
+      {
+        "Item": "ChickenNoodles",
+        "Price": 175
+      },
+      {
+        "Item": "EggNoodles",
+        "Price": 100
+      },
+      {
+        "Item": "FishFry",
+        "Price": 300
+      },
+      {
+        "Item": "Thumbsup",
+        "Price": 90
+      }
+    ]
+  }

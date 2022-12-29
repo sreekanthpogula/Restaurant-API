@@ -22,3 +22,4 @@
 {% if not loop.last %}
 <hr />
 {% endif %} {% endfor %} {% endblock %}
+<form method="post">{{ form.csrf_token }}</form>

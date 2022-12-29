@@ -21,3 +21,4 @@
   <div class="flash">{{ message }}</div>
   {% endfor %} {% block content %}{% endblock %}
 </section>
+<form method="post">{{ form.csrf_token }}</form>
