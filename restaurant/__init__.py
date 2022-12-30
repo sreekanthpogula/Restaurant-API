@@ -1,8 +1,6 @@
 import os
 
 from flask import Flask
-from flask_cors import cross_origin
-from flask_wtf.csrf import CSRFProtect
 
 
 def create_app(test_config=None):
@@ -14,9 +12,6 @@ def create_app(test_config=None):
                             DATABASE=os.path.join(
                                 app.instance_path, 'restaurant.sqlite'),
                             )
-
-    csrf = CSRFProtect()
-    csrf.init_app(app)
 
     if test_config is None:
         # load the instance config, if it exists, when not testing
@@ -35,10 +30,6 @@ def create_app(test_config=None):
     from . import db
     db.init_app(app)
 
-    @cross_origin()
-    @app.route('/', methods=['GET', 'POST'])
-    def hello_world():
-        return 'Hello World!'
     from . import auth
     app.register_blueprint(auth.bp)
 

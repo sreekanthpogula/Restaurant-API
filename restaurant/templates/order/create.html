@@ -7,6 +7,5 @@
   <label for="body">Items</label>
   <textarea name="body" id="body">{{ request.form['body'] }}</textarea>
   <input type="submit" value="Save" />
-  <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
 </form>
 {% endblock %}

@@ -18,16 +18,16 @@ with open('data.json') as f:
 orders = []
 
 
-@bp.route('/hello')
-@login_required
-def hello():
-    db = get_db()
-    orders = db.execute(
-        'SELECT p.id, title, body, created, author_id, username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
-        ' ORDER BY created DESC'
-    ).fetchall()
-    return render_template('order/index.html', orders=orders)
+# @bp.route('/')
+# @login_required
+# def hello():
+#     db = get_db()
+#     orders = db.execute(
+#         'SELECT p.id, title, body, created, author_id, username'
+#         ' FROM post p JOIN user u ON p.author_id = u.id'
+#         ' ORDER BY created DESC'
+#     ).fetchall()
+#     return render_template('order/index.html', orders=orders)
 
 
 @bp.route("/")
