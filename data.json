@@ -1,24 +1,6 @@
 {
   "orders": [
     {
-      "order_id": 2,
-      "customer_id": 103,
-      "ordered_items": [
-        {
-          "Item_name": "Chicken Biryani",
-          "Quantity": 1,
-          "size": "Full"
-        },
-        {
-          "Item_name": "crispy chicken",
-          "Quantity": 1,
-          "size": "Full"
-        }
-      ],
-      "status": "Canceled",
-      "order_time": "2022-09-12T17:47:42.161682"
-    },
-    {
       "order_id": 4,
       "customer_id": 106,
       "ordered_items": [
@@ -48,47 +30,11 @@
         {
           "Item_name": "crispy chicken",
           "Quantity": 1,
-          "size": "Full"
-        }
-      ],
-      "status": "Canceled",
-      "order_time": "2023-01-02T12:17:23.736823"
-    },
-    {
-      "order_id": 5,
-      "customer_id": 106,
-      "ordered_items": [
-        {
-          "Item_name": "Chicken Biryani",
-          "Quantity": 1,
-          "size": "Full"
-        },
-        {
-          "Item_name": "crispy chicken",
-          "Quantity": 1,
           "size": "89"
         }
       ],
       "status": "Canceled",
       "order_time": "2023-01-02T12:17:23.736823"
-    },
-    {
-      "order_id": 6,
-      "customer_id": 107,
-      "ordered_items": [
-        {
-          "Item_name": "Chicken noodles",
-          "Quantity": 1,
-          "size": "Full"
-        },
-        {
-          "Item_name": "crispy corn",
-          "Quantity": 1,
-          "size": "98"
-        }
-      ],
-      "status": "Canceled",
-      "order_time": "2023-01-02T12:22:11.645783"
     },
     {
       "order_id": 3,
@@ -109,22 +55,22 @@
       "order_time": "2023-01-02T12:22:11.645783"
     },
     {
-      "order_id": 1,
-      "customer_id": 100,
+      "order_id": 6,
+      "customer_id": 110,
       "ordered_items": [
         {
-          "Item_name": "Chicken Manchurian",
+          "Item_name": "Gongura",
           "Quantity": 5,
           "size": "Full"
         },
         {
-          "Item_name": "coffee",
+          "Item_name": "Expresso",
           "Quantity": 5,
           "size": "Full"
         }
       ],
       "status": "Success",
-      "order_time": "2023-01-02T13:10:25.667125"
+      "order_time": "2023-01-02T14:35:59.556136"
     }
   ]
 }

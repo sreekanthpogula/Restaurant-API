@@ -80,9 +80,6 @@ def get_specific_order(number):
             for order in data:
                 if order["order_id"] == number:
                     return jsonify(order)
-    #                 return order
-    #         else:
-    #             return "Order not found with Id"
     except:
         abort(404)
 
@@ -125,41 +122,53 @@ def create_order():
 
 @bp.route('/orders/<int:order_id>', methods=['PUT'])
 @validate()
-def update_order(number):
+def update_order(order_id):
     """
-    This function is used to update the existing order
-    :param number: order id
-    :return: Succesfull response returns updated json or
-    Id not exists or content type not exists or order not found
+    updates the json object according to the request
+    :param order_id:
+    :return: on success json object modified
     """
     content_type = request.headers.get('Content-Type')
-    if content_type != 'application/json':
-        return 'Content type not supported!', 400
+    try:
+        if content_type == 'application/json':
+            json_data = request.get_json()
 
-    put_json_data = request.get_json()
-    validated_data = order_list(**put_json_data)
-    validated_json_data = validated_data.dict()
+            with open('data.json') as fp:
+                file_json_data = json.load(fp)
+                list_json_data = file_json_data['orders']
+            Each_object = [
+                task for task in list_json_data if task["order_id"] == order_id]
+            if len(Each_object) == 0:
+                return jsonify({"Message": "Ordered Id not found Cannot place the request"})
+            if not request.json:
+                return jsonify({"Message": "Request body is invalid"})
+            update_item = Each_object[0]
 
-    if 'order_id' in put_json_data and type(validated_json_data['order_id']) == int:
-        with open('data.json', 'r+') as file:
-            orders_data = json.load(file)
+            if "customer_id" in json_data:
+                update_item["customer_id"] = json_data['customer_id']
 
-            list_of_ids = [order["order_id"]
-                           for order in orders_data["orders"]]
-            if put_json_data['order_id'] not in list_of_ids:
-                return jsonify({"Message": "Ordered Id not exists"}), 400
+            if "ordered_items" in json_data:
+                ordered_items_list = json_data["ordered_items"]
+                updated_order_list = update_item["ordered_items"]
+                for each_order in ordered_items_list:
+                    print(each_order)
+                    for each_ordered_item in updated_order_list:
+                        if each_ordered_item['Item_name'] == each_order['Item_name']:
+                            print(type(each_order["Quantity"]))
+                            if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
+                                each_ordered_item['Quantity'] = each_order['Quantity']
+                            else:
+                                return jsonify({"Message: Invalid type"})
+                            if ('size' in each_order.keys() and type(each_order['size'])) == str:
+                                each_ordered_item['size'] = each_order['size']
 
-            for order in orders_data["orders"]:
-                if order["order_id"] == number:
-                    order.update(validated_json_data)
-                    file.seek(0)
-                    json.dump(orders_data, file, cls=DateTimeEncoder, indent=2)
-                    file.truncate()
-                    return jsonify(validated_json_data), 200
-
-            return jsonify({"Message": "Order not found"}), 404
-    else:
-        return jsonify({"Message": "Order Id not exists"}), 400
+            with open('data.json', 'w') as json_file:
+                json.dump(file_json_data, json_file)
+            return "Order data updated succesfully"
+        else:
+            return jsonify({"Message": "Content-type not supported"})
+    except:
+        return jsonify({"Message": "Invalid Request body"})
 
 
 @bp.route('/orders/<int:order_id>/pay', methods=['POST'])
