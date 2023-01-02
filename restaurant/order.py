@@ -1,7 +1,6 @@
 from flask import (
-    Blueprint, jsonify, request
+    Blueprint, jsonify, request, abort
 )
-from flask import Flask, jsonify, abort
 from models.orders_list import Payment, food_items_list, order_list, Orders
 from flask_pydantic import validate
 
@@ -47,6 +46,7 @@ class DateTimeEncoder(json.JSONEncoder):
 def hello_restaurant():
     response = jsonify(
         'Welcome, To the Restaurant Appliaction, YOU CAN ORDER NOW!')
+    response.headers['Content-Type'] = 'application/json'
     response.status_code = 200
     return response
 
@@ -79,9 +79,10 @@ def get_specific_order(number):
             data = order_data["orders"]
             for order in data:
                 if order["order_id"] == number:
-                    return order
-            else:
-                return "Order not found with Id"
+                    return jsonify(order)
+    #                 return order
+    #         else:
+    #             return "Order not found with Id"
     except:
         abort(404)
 
@@ -96,82 +97,69 @@ def create_order():
     Id exists or Content-type not exists
     """
     content_type = request.headers.get('Content-Type')
-    try:
-        if content_type == 'application/json':
-            post_json_data = request.get_json()
-            validated_data = order_list(**post_json_data)
-            with open('data.json', 'r+') as file:
-                orders_data = json.load(file)
-                validated_json_data = validated_data.dict()
-            if 'order_id' in post_json_data and type(validated_json_data['order_id']) == int:
-                list_of_ids = [order["order_id"]
-                               for order in orders_data["orders"]]
+    if content_type != 'application/json':
+        return 'Content type not supported!', 400
 
-                for orderId in list_of_ids:
-                    if post_json_data['order_id'] == orderId:
-                        return jsonify({"Message": "Ordered Id Already exists"})
-                else:
-                    orders_data["orders"].append(validated_json_data)
-                    with open('data.json', 'w') as json_file:
-                        json.dump(orders_data, json_file,
-                                  cls=DateTimeEncoder, indent=2)
-                    return validated_json_data
+    post_json_data = request.get_json()
+    validated_data = order_list(**post_json_data)
+    validated_json_data = validated_data.dict()
 
-        else:
-            return 'Content type not supported!'
-    except:
-        return jsonify({"Message": "Invalid request body"})
+    if 'order_id' in post_json_data and type(validated_json_data['order_id']) == int:
+        with open('data.json', 'r+') as file:
+            orders_data = json.load(file)
+
+            list_of_ids = [order["order_id"]
+                           for order in orders_data["orders"]]
+            if post_json_data['order_id'] in list_of_ids:
+                return jsonify({"Message": "Ordered Id Already exists"}), 400
+
+            orders_data["orders"].append(validated_json_data)
+            file.seek(0)
+            json.dump(orders_data, file, cls=DateTimeEncoder, indent=2)
+            file.truncate()
+
+        return jsonify(validated_json_data), 201
+    else:
+        return jsonify({"Message": "Order Id not exists"}), 400
 
 
 @bp.route('/orders/<int:order_id>', methods=['PUT'])
 @validate()
-def update_order(order_id):
+def update_order(number):
     """
-    updates the json object according to the request
-    :param order_id:
-    :return: on success json object modified
+    This function is used to update the existing order
+    :param number: order id
+    :return: Succesfull response returns updated json or
+    Id not exists or content type not exists or order not found
     """
     content_type = request.headers.get('Content-Type')
-    try:
-        if content_type == 'application/json':
-            json_data = request.get_json()
+    if content_type != 'application/json':
+        return 'Content type not supported!', 400
 
-            with open('data.json') as fp:
-                file_json_data = json.load(fp)
-                list_json_data = file_json_data['orders']
-            Each_object = [
-                task for task in list_json_data if task["order_id"] == order_id]
-            if len(Each_object) == 0:
-                return jsonify({"Message": "Ordered Id not found Cannot place the request"})
-            if not request.json:
-                return jsonify({"Message": "Request body is invalid"})
-            update_item = Each_object[0]
+    put_json_data = request.get_json()
+    validated_data = order_list(**put_json_data)
+    validated_json_data = validated_data.dict()
 
-            if "customer_id" in json_data:
-                update_item["customer_id"] = json_data['customer_id']
+    if 'order_id' in put_json_data and type(validated_json_data['order_id']) == int:
+        with open('data.json', 'r+') as file:
+            orders_data = json.load(file)
 
-            if "ordered_items" in json_data:
-                ordered_items_list = json_data["ordered_items"]
-                updated_order_list = update_item["ordered_items"]
-                for each_order in ordered_items_list:
-                    print(each_order)
-                    for each_ordered_item in updated_order_list:
-                        if each_ordered_item['Item_name'] == each_order['Item_name']:
-                            print(type(each_order["Quantity"]))
-                            if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
-                                each_ordered_item['Quantity'] = each_order['Quantity']
-                            else:
-                                return jsonify({"Message: Invalid type"})
-                            if ('size' in each_order.keys() and type(each_order['size'])) == str:
-                                each_ordered_item['size'] = each_order['size']
+            list_of_ids = [order["order_id"]
+                           for order in orders_data["orders"]]
+            if put_json_data['order_id'] not in list_of_ids:
+                return jsonify({"Message": "Ordered Id not exists"}), 400
 
-            with open('data.json', 'w') as json_file:
-                json.dump(file_json_data, json_file)
-            return "Order data updated succesfully"
-        else:
-            return jsonify({"Message": "Content-type not supported"})
-    except:
-        return jsonify({"Message": "Invalid Request body"})
+            for order in orders_data["orders"]:
+                if order["order_id"] == number:
+                    order.update(validated_json_data)
+                    file.seek(0)
+                    json.dump(orders_data, file, cls=DateTimeEncoder, indent=2)
+                    file.truncate()
+                    return jsonify(validated_json_data), 200
+
+            return jsonify({"Message": "Order not found"}), 404
+    else:
+        return jsonify({"Message": "Order Id not exists"}), 400
 
 
 @bp.route('/orders/<int:order_id>/pay', methods=['POST'])
