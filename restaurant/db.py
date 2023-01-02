@@ -1,5 +1,4 @@
 import sqlite3
-
 import click
 from flask import current_app, g
 
@@ -39,3 +38,39 @@ def init_db_command():
 def init_app(app):
     app.teardown_appcontext(close_db)
     app.cli.add_command(init_db_command)
+
+
+def connect_db():
+    conn = sqlite3.connect('orders.db')
+    return conn
+
+
+def create_orders_table():
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, item TEXT, quantity INTEGER, price REAL, status TEXT)''')
+    conn.commit()
+
+
+def insert_order(item, quantity, price, status):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''INSERT INTO orders (item, quantity, price, status) VALUES (?, ?, ?, ?)''', (item, quantity, price, status))
+    conn.commit()
+
+
+def update_order(id, item, quantity, price, status):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute(
+        '''UPDATE orders SET item = ?, quantity = ?, price = ?, status = ? WHERE id = ?''', (item, quantity, price, status, id))
+    conn.commit()
+
+
+def delete_order(id):
+    conn = connect_db()
+    cursor = conn.cursor()
+    cursor.execute('''DELETE FROM orders WHERE id = ?''', (id,))
+    conn.commit()

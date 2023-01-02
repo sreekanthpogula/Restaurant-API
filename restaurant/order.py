@@ -1,37 +1,49 @@
 from flask import (
-    Blueprint, flash, g, jsonify, redirect, render_template, request, url_for
+    Blueprint, jsonify, request
 )
+from flask import Flask, jsonify, abort
+from models.orders_list import Payment, food_items_list, order_list, Orders
+from flask_pydantic import validate
+
 import json
-from werkzeug.exceptions import abort
+import datetime
 
 from restaurant.auth import login_required
-from restaurant.db import get_db
 
-bp = Blueprint('blog', __name__)
-
-# d = [{'Item': 'Rice', 'Price': 150}, {'Item': 'Dal', 'Price': 125}, {'Item': 'Chicken', 'Price': 200}, {
-#     'Item': 'Mutton', 'Price': 450}, {'Item': 'Fish', 'Price': 300}, {'Item': 'IceCream', 'Price': 199}, {'Item': 'manchurian', 'Price': 75}, {'Item': 'noodles', 'Price': 90}, {'Item': 'ChickenNoodles', 'Price': 175}, {
-#     'Item': 'EggNoodles', 'Price': 100}, {'Item': 'FishFry', 'Price': 300}, {'Item': 'Thumbsup', 'Price': 90}]
-
-with open('data.json') as f:
-    d = json.load(f)
-orders = []
+bp = Blueprint('order', __name__)
 
 
-# @bp.route('/')
-# @login_required
-# def hello():
-#     db = get_db()
-#     orders = db.execute(
-#         'SELECT p.id, title, body, created, author_id, username'
-#         ' FROM post p JOIN user u ON p.author_id = u.id'
-#         ' ORDER BY created DESC'
-#     ).fetchall()
-#     return render_template('order/index.html', orders=orders)
+@bp.errorhandler(400)
+def bad_request(error):
+    return "Bad Request Error -400", 400
+
+
+@bp.errorhandler(404)
+def not_found(error):
+    return "File Not Found- 404", 404
+
+
+@bp.errorhandler(405)
+def method_not_allowed(error):
+    return "Method Not Allowed 405", 405
+
+
+@bp.errorhandler(500)
+def internal_server_error(error):
+    return "Internal Server Error 500", 500
+
+
+class DateTimeEncoder(json.JSONEncoder):
+    def default(self, obj):
+        if isinstance(obj, (datetime.datetime, datetime.date, datetime.time)):
+            return obj.isoformat()
+        elif isinstance(obj, datetime.timedelta):
+            return (datetime.datetime.min + obj).time().isoformat()
+
+        return super(DateTimeEncoder, self).default(obj)
 
 
 @bp.route("/")
-@login_required
 def hello_restaurant():
     response = jsonify(
         'Welcome, To the Restaurant Appliaction, YOU CAN ORDER NOW!')
@@ -39,186 +51,200 @@ def hello_restaurant():
     return response
 
 
-@bp.route('/order/showmenu')
-@login_required
-def show_menu():
-    response = jsonify({'Menu': d})
-    response.status_code = 200
-    return response
+@bp.route('/orders', methods=['GET'])
+def get_orders():
+    """
+    This function is used to display all the order
+    returns:ordered items as json
+    """
+    try:
+        if request.method == 'GET':
+            with open('data.json', 'r') as f:
+                fileData = json.load(f)
+                return jsonify(fileData)
+    except:
+        abort(404)
 
 
-@bp.route('/order/createorder/<int:id>', methods=['GET', 'POST'])
-@login_required
-def create_order(id):
-    response = {}
-    if id < len(d) and d[id] not in orders:
-        d = d[id]
-        d['Quantity'] = 1
-        orders.append(d)
-        response = jsonify({'Status': 'Added', 'Item': d})
-        response.status_code = 200
-    elif id >= len(d):
-        response = jsonify({'Status': 'Not in menu'})
-        response.status_code = 404
-    elif d[id] in orders:
-        for i in orders:
-            if i['Item'] == d[id]['Item']:
-                i['Quantity'] += 1
-        response = jsonify(
-            {'Status': 'Updated quantity', 'Item': d[id]})
-        response.status_code = 200
-    return response
-# @bp.route('/create', methods=('GET', 'POST'))
-# @login_required
-# def create():
-#     if request.method == 'POST':
-#         title = request.form['title']
-#         body = request.form['body']
-#         error = None
-
-#         if not title:
-#             error = 'Title is required.'
-
-#         if error is not None:
-#             flash(error)
-#         else:
-#             db = get_db()
-#             db.execute(
-#                 'INSERT INTO post (title, body, author_id)'
-#                 ' VALUES (?, ?, ?)',
-#                 (title, body, g.user['id'])
-#             )
-#             db.commit()
-#             return redirect(url_for('blog.index'))
-
-#     return render_template('blog/create.html')
+@bp.route('/orders/<int:number>', methods=['GET'])
+def get_specific_order(number):
+    """
+    used to display the specific ordered item in the json
+    param number: ordered_id
+    return: ordered_item as json
+    """
+    try:
+        with open('data.json', 'r') as f:
+            order_data = json.load(f)
+            data = order_data["orders"]
+            for order in data:
+                if order["order_id"] == number:
+                    return order
+            else:
+                return "Order not found with Id"
+    except:
+        abort(404)
 
 
-@bp.route('/order/showorder', methods=['GET'])
-@login_required
-def show_orders():
-    response = ' '
-    if len(orders) == 0:
-        response = jsonify({'Your orders': 'Haven\'t ordered anything yet'})
-        response.status_code = 404
-    else:
-        response = jsonify({'Your orders': orders})
-        response.status_code = 200
-    return response
+@bp.route('/orders', methods=['POST'])
+@validate()
+def create_order():
+    """
+    This Function is used to create the new order and place the
+    new json passed through the body
+    :return: Succesfull response returns new placed json or
+    Id exists or Content-type not exists
+    """
+    content_type = request.headers.get('Content-Type')
+    try:
+        if content_type == 'application/json':
+            post_json_data = request.get_json()
+            validated_data = order_list(**post_json_data)
+            with open('data.json', 'r+') as file:
+                orders_data = json.load(file)
+                validated_json_data = validated_data.dict()
+            if 'order_id' in post_json_data and type(validated_json_data['order_id']) == int:
+                list_of_ids = [order["order_id"]
+                               for order in orders_data["orders"]]
 
-# def get_post(id, check_author=True):
-#     post = get_db().execute(
-#         'SELECT p.id, title, body, created, author_id, username'
-#         ' FROM post p JOIN user u ON p.author_id = u.id'
-#         ' WHERE p.id = ?',
-#         (id,)
-#     ).fetchone()
+                for orderId in list_of_ids:
+                    if post_json_data['order_id'] == orderId:
+                        return jsonify({"Message": "Ordered Id Already exists"})
+                else:
+                    orders_data["orders"].append(validated_json_data)
+                    with open('data.json', 'w') as json_file:
+                        json.dump(orders_data, json_file,
+                                  cls=DateTimeEncoder, indent=2)
+                    return validated_json_data
 
-#     if post is None:
-#         abort(404, f"Post id {id} doesn't exist.")
-
-#     if check_author and post['author_id'] != g.user['id']:
-#         abort(403)
-
-#     return post
-
-
-@bp.route('/order/showprice', methods=['GET'])
-def show_price():
-    response = {}
-    if len(orders) == 0:
-        response = jsonify({'Orders': 'Haven\'t ordered yet', 'Price': 0})
-        response.status_code = 404
-    else:
-        p = 0
-        for i in orders:
-            p = p + i['Price']*i['Quantity']
-        response = jsonify({'Orders': orders, 'TotalPrice': p})
-        response.status_code = 200
-    return response
+        else:
+            return 'Content type not supported!'
+    except:
+        return jsonify({"Message": "Invalid request body"})
 
 
-# @bp.route('/<int:id>/update', methods=('GET', 'POST'))
-# @login_required
-# def update(id):
-#     post = get_post(id)
+@bp.route('/orders/<int:order_id>', methods=['PUT'])
+@validate()
+def update_order(order_id):
+    """
+    updates the json object according to the request
+    :param order_id:
+    :return: on success json object modified
+    """
+    content_type = request.headers.get('Content-Type')
+    try:
+        if content_type == 'application/json':
+            json_data = request.get_json()
 
-#     if request.method == 'POST':
-#         title = request.form['title']
-#         body = request.form['body']
-#         error = None
+            with open('data.json') as fp:
+                file_json_data = json.load(fp)
+                list_json_data = file_json_data['orders']
+            Each_object = [
+                task for task in list_json_data if task["order_id"] == order_id]
+            if len(Each_object) == 0:
+                return jsonify({"Message": "Ordered Id not found Cannot place the request"})
+            if not request.json:
+                return jsonify({"Message": "Request body is invalid"})
+            update_item = Each_object[0]
 
-#         if not title:
-#             error = 'Title is required.'
+            if "customer_id" in json_data:
+                update_item["customer_id"] = json_data['customer_id']
 
-#         if error is not None:
-#             flash(error)
-#         else:
-#             db = get_db()
-#             db.execute(
-#                 'UPDATE post SET title = ?, body = ?'
-#                 ' WHERE id = ?',
-#                 (title, body, id)
-#             )
-#             db.commit()
-#             return redirect(url_for('blog.index'))
+            if "ordered_items" in json_data:
+                ordered_items_list = json_data["ordered_items"]
+                updated_order_list = update_item["ordered_items"]
+                for each_order in ordered_items_list:
+                    print(each_order)
+                    for each_ordered_item in updated_order_list:
+                        if each_ordered_item['Item_name'] == each_order['Item_name']:
+                            print(type(each_order["Quantity"]))
+                            if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
+                                each_ordered_item['Quantity'] = each_order['Quantity']
+                            else:
+                                return jsonify({"Message: Invalid type"})
+                            if ('size' in each_order.keys() and type(each_order['size'])) == str:
+                                each_ordered_item['size'] = each_order['size']
 
-#     return render_template('blog/update.html', post=post)
-
-@bp.route('/order/deleteorder/<int:delid>', methods=['GET', 'POST'])
-def delete_order(delid):
-    response = {}
-    if (delid < len(orders) and delid >= 0):
-        for i in range(len(orders)):
-            if i == delid:
-                orders[i]['Quantity'] -= 1
-
-        for i in orders:
-            if i['Quantity'] == 0:
-                orders.remove(i)
-        response = jsonify({'Status': 'Successfully Deleted'})
-        response.status_code = 200
-    else:
-        response = jsonify({'Status': 'Item Wasn\'t in the menu'})
-        response.status_code = 404
-    return response
-# @bp.route('/<int:id>/delete', methods=('POST',))
-# @login_required
-# def delete(id):
-#     get_post(id)
-#     db = get_db()
-#     db.execute('DELETE FROM post WHERE id = ?', (id,))
-#     db.commit()
-#     return redirect(url_for('blog.index'))
+            with open('data.json', 'w') as json_file:
+                json.dump(file_json_data, json_file)
+            return "Order data updated succesfully"
+        else:
+            return jsonify({"Message": "Content-type not supported"})
+    except:
+        return jsonify({"Message": "Invalid Request body"})
 
 
-@bp.route('/order/editmenu', methods=['GET', 'PUT'])
-def edit_menu():
-    item = {'Item': 'New Item', 'Price': 15}
-    f = False
-    for i in d:
-        if i == item:
-            f = True
-    if not f:
-        d.append(item)
-        response = jsonify(
-            {'Status': 'New Item Added Successfully', 'Item': item})
-        response.status_code = 201
-    else:
-        response = jsonify({'Status': 'Already There', 'Item': item})
-        response.status_code = 400
-    return response
+@bp.route('/orders/<int:order_id>/pay', methods=['POST'])
+@validate()
+def payment(order_id):
+    """
+    used to create the payment in the order
+    :param order_id: order id to create the payment
+    :return:On success returns message
+    """
+    print(order_id)
+    try:
+        content_type = request.headers.get('Content-Type')
+        if content_type == 'application/json':
+            json_data = request.get_json()
+            with open('data.json', 'r') as f:
+                order_data = json.load(f)
+                data = order_data["orders"]
+                for order in data:
+                    if order["order_id"] == order_id:
+                        if 'Payment' in order:
+                            return jsonify({"Message": "Payment status already updated"})
+                        else:
+                            order["Payment"] = json_data
+                            with open('data.json', 'w') as json_file:
+                                json.dump(order_data, json_file)
+                            return order
+                else:
+                    return "Order Id not found"
+    except:
+        return "Invalid request body"
 
 
-@bp.route('/order/cancel', methods=['DELETE'])
-def delete_from_menu():
-    item = d[2]
-    for i in d:
-        if i == item:
-            d.remove(i)
-            response = jsonify({'Status': 'Cancelled', 'Item': item})
-            response.status_code = 200
-            return response
+@bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
+def cancel_order(order_id):
+    """
+    used to cancel the order that has been ordered
+    :param order_id: order id used to cancel the respective order
+    :return: respective order
+    """
+    with open('data.json', 'r') as f:
+        order_data = json.load(f)
+        data = order_data["orders"]
+        for order in data:
+            if order["order_id"] == order_id:
+                if order["status"] == "Canceled":
+                    return "Order already canceled"
+                order["status"] = "Canceled"
+    with open('data.json', 'w') as json_file:
+        json.dump(order_data, json_file)
+    return order
 
-    response = jsonify({'Status': 'Not in Menu', 'Item': item})
-    response.status_code = 404
+
+@bp.route('/orders/<int:number>', methods=['DELETE'])
+def delete_order(number):
+    """
+    Used to delete the order in the object
+    :param number: respective order id to be deleted
+    :return: Object should be deleted on success
+    """
+    with open('data.json') as data_file:
+        order_data = json.load(data_file)
+        data = order_data["orders"]
+        for order in data:
+            if order["order_id"] == number:
+                data.remove(order)
+                with open('data.json', 'w') as modified_file:
+                    json.dump(order_data, modified_file)
+                return jsonify({"Message": "Order is deleted"})
+
+        else:
+            return jsonify({"Message": "Order is not found"})
+
+
+if __name__ == "__main__":
+    bp.run(debug=True)
