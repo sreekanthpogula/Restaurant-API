@@ -40,37 +40,38 @@ def init_app(app):
     app.cli.add_command(init_db_command)
 
 
-def connect_db():
-    conn = sqlite3.connect('orders.db')
-    return conn
-
-
 def create_orders_table():
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        '''CREATE TABLE IF NOT EXISTS orders (id INTEGER PRIMARY KEY, item TEXT, quantity INTEGER, price REAL, status TEXT)''')
+    """
+    Creates the orders table in the database
+    """
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS orders (
+            order_id INTEGER PRIMARY KEY,
+            customer_id INTEGER NOT NULL,
+            status VARCHAR(255) NOT NULL,
+            order_time TIMESTAMP NOT NULL
+        )'''
+    )
     conn.commit()
+    close_db(conn)
 
 
-def insert_order(item, quantity, price, status):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        '''INSERT INTO orders (item, quantity, price, status) VALUES (?, ?, ?, ?)''', (item, quantity, price, status))
+def create_ordered_items_table():
+    """
+    Creates the ordered_items table in the database
+    """
+    conn = get_db()
+    c = conn.cursor()
+    c.execute(
+        '''CREATE TABLE IF NOT EXISTS ordered_items (
+            order_id INTEGER NOT NULL,
+            item_name VARCHAR(255) NOT NULL,
+            quantity INTEGER NOT NULL,
+            size VARCHAR(255) NOT NULL,
+            FOREIGN KEY (order_id) REFERENCES orders(order_id)
+        )'''
+    )
     conn.commit()
-
-
-def update_order(id, item, quantity, price, status):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute(
-        '''UPDATE orders SET item = ?, quantity = ?, price = ?, status = ? WHERE id = ?''', (item, quantity, price, status, id))
-    conn.commit()
-
-
-def delete_order(id):
-    conn = connect_db()
-    cursor = conn.cursor()
-    cursor.execute('''DELETE FROM orders WHERE id = ?''', (id,))
-    conn.commit()
+    close_db(conn)

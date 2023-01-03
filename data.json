@@ -71,6 +71,24 @@
       ],
       "status": "Success",
       "order_time": "2023-01-02T14:35:59.556136"
+    },
+    {
+      "order_id": 1,
+      "customer_id": 101,
+      "ordered_items": [
+        {
+          "Item_name": "Chicken Biryani",
+          "Quantity": 2,
+          "size": "Full"
+        },
+        {
+          "Item_name": "crispy chicken",
+          "Quantity": 1,
+          "size": "Single"
+        }
+      ],
+      "status": "Paid",
+      "order_time": "2023-01-03T10:04:27.601369"
     }
   ]
 }

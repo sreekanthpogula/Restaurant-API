@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, jsonify, request, abort
+    Blueprint, jsonify, render_template, request, abort
 )
 from models.orders_list import Payment, food_items_list, order_list, Orders
 from flask_pydantic import validate
@@ -7,7 +7,7 @@ from flask_pydantic import validate
 import json
 import datetime
 
-from restaurant.auth import login_required
+from restaurant.db import get_db
 
 bp = Blueprint('order', __name__)
 
@@ -42,10 +42,21 @@ class DateTimeEncoder(json.JSONEncoder):
         return super(DateTimeEncoder, self).default(obj)
 
 
-@bp.route("/")
+# @bp.route('/')
+# def hello():
+#     db = get_db()
+#     orders = db.execute(
+#         'SELECT p.id, title, body, created, author_id, username'
+#         ' FROM post p JOIN user u ON p.author_id = u.id'
+#         ' ORDER BY created DESC'
+#     ).fetchall()
+#     return render_template('order/index.html', orders=orders)
+
+
+@bp.route('/')
 def hello_restaurant():
     response = jsonify(
-        'Welcome, To the Restaurant Appliaction, YOU CAN ORDER NOW!')
+        'Welcome, To the Restaurant Application, YOU CAN ORDER NOW!')
     response.headers['Content-Type'] = 'application/json'
     response.status_code = 200
     return response
