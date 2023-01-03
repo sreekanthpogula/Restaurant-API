@@ -1,4 +1,2 @@
 include restaurant/schema.sql
-graft restaurant/static
-graft restaurant/templates
 global-exclude *.pyc
