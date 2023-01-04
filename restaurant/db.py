@@ -1,77 +1,30 @@
-import sqlite3
-import click
-from flask import current_app, g
+import db
+from flask import app
 
 
-def get_db():
-    if 'db' not in g:
-        g.db = sqlite3.connect(
-            current_app.config['DATABASE'],
-            detect_types=sqlite3.PARSE_DECLTYPES
-        )
-        g.db.row_factory = sqlite3.Row
-
-    return g.db
+class Orders(db.Model):
+    order_id = db.Column(db.Integer, primary_key=True)
+    customer_id = db.Column(db.Integer, unique=True, nullable=False)
+    status = db.Column(db.String(255), nullable=False)
+    order_time = db.Column(db.DateTime, nullable=False)
 
 
-def close_db(e=None):
-    db = g.pop('db', None)
-
-    if db is not None:
-        db.close()
-
-
-def init_db():
-    db = get_db()
-
-    with current_app.open_resource('schema.sql') as f:
-        db.executescript(f.read().decode('utf8'))
+class OrderedItems(db.Model):
+    order_id = db.Column(db.Integer, db.ForeignKey(
+        'orders.order_id'), primary_key=True)
+    item_name = db.Column(db.String(255), nullable=False)
+    quantity = db.Column(db.Integer, nullable=False)
+    size = db.Column(db.String(255), nullable=False)
+    order = db.relationship("Orders", back_populates="ordered_items")
 
 
-@click.command('init-db')
-def init_db_command():
-    """Clear the existing data and create new tables."""
-    init_db()
-    click.echo('Initialized the database.')
+Orders.ordered_items = db.relationship(
+    "OrderedItems", order_by=OrderedItems.order_id, back_populates="order")
+
+
+with app.app_context():
+    db.create_all()
 
 
 def init_app(app):
-    app.teardown_appcontext(close_db)
-    app.cli.add_command(init_db_command)
-
-
-def create_orders_table():
-    """
-    Creates the orders table in the database
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS orders (
-            order_id INTEGER PRIMARY KEY,
-            customer_id INTEGER NOT NULL,
-            status VARCHAR(255) NOT NULL,
-            order_time TIMESTAMP NOT NULL
-        )'''
-    )
-    conn.commit()
-    close_db(conn)
-
-
-def create_ordered_items_table():
-    """
-    Creates the ordered_items table in the database
-    """
-    conn = get_db()
-    c = conn.cursor()
-    c.execute(
-        '''CREATE TABLE IF NOT EXISTS ordered_items (
-            order_id INTEGER NOT NULL,
-            item_name VARCHAR(255) NOT NULL,
-            quantity INTEGER NOT NULL,
-            size VARCHAR(255) NOT NULL,
-            FOREIGN KEY (order_id) REFERENCES orders(order_id)
-        )'''
-    )
-    conn.commit()
-    close_db(conn)
+    return 'DATABASE INITIALIZED'
