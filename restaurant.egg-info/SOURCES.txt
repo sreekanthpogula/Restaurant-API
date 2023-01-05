@@ -1,0 +1,13 @@
+MANIFEST.in
+README.md
+setup.cfg
+setup.py
+restaurant/__init__.py
+restaurant/db.py
+restaurant/order.py
+restaurant/schema.sql
+restaurant.egg-info/PKG-INFO
+restaurant.egg-info/SOURCES.txt
+restaurant.egg-info/dependency_links.txt
+restaurant.egg-info/requires.txt
+restaurant.egg-info/top_level.txt

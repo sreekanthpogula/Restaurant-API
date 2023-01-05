@@ -1,0 +1,23 @@
+venv/
+
+*.pyc
+__pycache__/
+
+instance/
+
+.pytest_cache/
+.coverage
+htmlcov/
+
+dist/
+build/
+*.egg-info/
+
+# Ignore all .vscode directories
+.vscode/
+
+# Ignore all .idea directories
+.idea/
+
+# Ignore all files ending in .tmp
+*.tmp
