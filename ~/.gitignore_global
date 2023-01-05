@@ -21,3 +21,4 @@ build/
 
 # Ignore all files ending in .tmp
 *.tmp
+*.txt
