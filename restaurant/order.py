@@ -64,7 +64,7 @@ def get_orders():
         c = conn.cursor()
 
         # Execute a SELECT statement to get all orders and their corresponding ordered items
-        c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.item_name, i.quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id")
+        c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.Item_name, i.Quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id")
         rows = c.fetchall()
 
         # Convert the result to a list of dictionaries
@@ -75,8 +75,8 @@ def get_orders():
                 "customer_id": row[1],
                 "status": row[2],
                 "order_time": row[3],
-                "item_name": row[4],
-                "quantity": row[5],
+                "Item_name": row[4],
+                "Quantity": row[5],
                 "size": row[6]
             })
 
@@ -95,11 +95,11 @@ def get_specific_order(number):
     Returns: order and ordered items as JSON
     """
     # Connect to the database
-    conn = get_db
+    conn = get_db()
     c = conn.cursor()
 
     # Execute a SELECT statement to get the specified order and its corresponding ordered items
-    c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.item_name, i.quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id WHERE o.order_id = ?", (number,))
+    c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.Item_name, i.Quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id WHERE o.order_id = ?", (number,))
     row = c.fetchone()
 
     # Convert the result to a dictionary
@@ -110,8 +110,8 @@ def get_specific_order(number):
         "order_time": row[3],
         "items": [
             {
-                "item_name": row[4],
-                "quantity": row[5],
+                "Item_name": row[4],
+                "Quantity": row[5],
                 "size": row[6]
             }
         ]
@@ -141,7 +141,7 @@ def create_order():
 
     if 'order_id' in post_json_data and type(validated_json_data['order_id']) == int:
         # Connect to the database
-        conn = get_db
+        conn = get_db()
         c = conn.cursor()
 
         # Insert the order into the orders table
@@ -149,9 +149,9 @@ def create_order():
                   (validated_json_data['order_id'], validated_json_data['customer_id'], validated_json_data['status'], validated_json_data['order_time']))
 
         # Insert the ordered items into the ordered_items table
-        for item in validated_json_data['items']:
-            c.execute("INSERT INTO ordered_items (order_id, item_name, quantity, size) VALUES (?, ?, ?, ?)",
-                      (validated_json_data['order_id'], item['item_name'], item['quantity'], item['size']))
+        for item in validated_json_data['ordered_items']:
+            c.execute("INSERT INTO ordered_items (order_id, Item_name, Quantity, size) VALUES (?, ?, ?, ?)",
+                      (validated_json_data['order_id'], item['Item_name'], item['Quantity'], item['size']))
 
         # Commit the changes to the database
         conn.commit()
@@ -174,7 +174,7 @@ def update_order(order_id):
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
         # Connect to the database
-        conn = get_db
+        conn = get_db()
         c = conn.cursor()
 
         # Get the data from the request body
@@ -194,17 +194,17 @@ def update_order(order_id):
         if "ordered_items" in json_data:
             ordered_items_list = json_data["ordered_items"]
             for each_order in ordered_items_list:
-                c.execute("SELECT * FROM ordered_items WHERE order_id=? AND item_name=?",
+                c.execute("SELECT * FROM ordered_items WHERE order_id=? AND Item_name=?",
                           (order_id, each_order['Item_name']))
                 ordered_item = c.fetchone()
                 if ordered_item is not None:
                     if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
-                        c.execute("UPDATE ordered_items SET quantity=? WHERE order_id=? AND item_name=?", (
+                        c.execute("UPDATE ordered_items SET Quantity=? WHERE order_id=? AND Item_name=?", (
                             each_order['Quantity'], order_id, each_order['Item_name']))
                     else:
                         return jsonify({"Message": "Invalid type"})
                     if ('size' in each_order.keys() and type(each_order['size'])) == str:
-                        c.execute("UPDATE ordered_items SET size=? WHERE order_id=? AND item_name=?", (
+                        c.execute("UPDATE ordered_items SET size=? WHERE order_id=? AND Item_name=?", (
                             each_order['size'], order_id, each_order['Item_name']))
 
         # Commit the changes to the database
@@ -228,7 +228,7 @@ def payment(order_id):
     content_type = request.headers.get('Content-Type')
     if content_type == 'application/json':
         # Connect to the database
-        conn = get_db
+        conn = get_db()
         c = conn.cursor()
 
         # Check if the order_id exists in the orders table
@@ -257,7 +257,7 @@ def cancel_order(order_id):
     Returns: the canceled order
     """
     # Connect to the database
-    conn = get_db
+    conn = get_db()
     c = conn.cursor()
 
     # Check if the order_id exists in the orders table
@@ -292,7 +292,7 @@ def delete_order(number):
     :return: Object should be deleted on success
     """
     # Connect to the database
-    db = get_db
+    db = get_db()
     c = db.cursor()
 
     # Execute a DELETE statement to delete the order and its corresponding ordered items from the tables
