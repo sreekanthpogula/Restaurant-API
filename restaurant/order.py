@@ -1,5 +1,6 @@
+import sqlite3
 from flask import (
-    Blueprint, jsonify, render_template, request, abort
+    Blueprint, jsonify, request, abort
 )
 from models.orders_list import Payment, food_items_list, order_list, Orders
 from flask_pydantic import validate
@@ -42,17 +43,6 @@ class DateTimeEncoder(json.JSONEncoder):
         return super(DateTimeEncoder, self).default(obj)
 
 
-# @bp.route('/')
-# def hello():
-#     db = get_db()
-#     orders = db.execute(
-#         'SELECT p.id, title, body, created, author_id, username'
-#         ' FROM post p JOIN user u ON p.author_id = u.id'
-#         ' ORDER BY created DESC'
-#     ).fetchall()
-#     return render_template('order/index.html', orders=orders)
-
-
 @bp.route('/')
 def hello_restaurant():
     response = jsonify(
@@ -65,44 +55,81 @@ def hello_restaurant():
 @bp.route('/orders', methods=['GET'])
 def get_orders():
     """
-    This function is used to display all the order
-    returns:ordered items as json
+    This function is used to display all the orders and their corresponding ordered items
+    Returns: orders and ordered items as JSON
     """
-    try:
-        if request.method == 'GET':
-            with open('data.json', 'r') as f:
-                fileData = json.load(f)
-                return jsonify(fileData)
-    except:
-        abort(404)
+    if request.method == 'GET':
+        # Connect to the database
+        conn = get_db()
+        c = conn.cursor()
+
+        # Execute a SELECT statement to get all orders and their corresponding ordered items
+        c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.item_name, i.quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id")
+        rows = c.fetchall()
+
+        # Convert the result to a list of dictionaries
+        result = []
+        for row in rows:
+            result.append({
+                "order_id": row[0],
+                "customer_id": row[1],
+                "status": row[2],
+                "order_time": row[3],
+                "item_name": row[4],
+                "quantity": row[5],
+                "size": row[6]
+            })
+
+        # Close the connection to the database
+        conn.close()
+
+        # Return the result as JSON
+        return jsonify(result)
 
 
 @bp.route('/orders/<int:number>', methods=['GET'])
 def get_specific_order(number):
     """
-    used to display the specific ordered item in the json
-    param number: ordered_id
-    return: ordered_item as json
+    This function is used to display a specific order and its corresponding ordered items
+    Parameters: order ID (number)
+    Returns: order and ordered items as JSON
     """
-    try:
-        with open('data.json', 'r') as f:
-            order_data = json.load(f)
-            data = order_data["orders"]
-            for order in data:
-                if order["order_id"] == number:
-                    return jsonify(order)
-    except:
-        abort(404)
+    # Connect to the database
+    conn = get_db
+    c = conn.cursor()
+
+    # Execute a SELECT statement to get the specified order and its corresponding ordered items
+    c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.item_name, i.quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id WHERE o.order_id = ?", (number,))
+    row = c.fetchone()
+
+    # Convert the result to a dictionary
+    result = {
+        "order_id": row[0],
+        "customer_id": row[1],
+        "status": row[2],
+        "order_time": row[3],
+        "items": [
+            {
+                "item_name": row[4],
+                "quantity": row[5],
+                "size": row[6]
+            }
+        ]
+    }
+
+    # Close the connection to the database
+    conn.close()
+
+    # Return the result as JSON
+    return jsonify(result)
 
 
 @bp.route('/orders', methods=['POST'])
 @validate()
 def create_order():
     """
-    This Function is used to create the new order and place the
-    new json passed through the body
-    :return: Succesfull response returns new placed json or
-    Id exists or Content-type not exists
+    This function is used to create a new order and its corresponding ordered items
+    Returns: new order and ordered items as JSON
     """
     content_type = request.headers.get('Content-Type')
     if content_type != 'application/json':
@@ -113,18 +140,24 @@ def create_order():
     validated_json_data = validated_data.dict()
 
     if 'order_id' in post_json_data and type(validated_json_data['order_id']) == int:
-        with open('data.json', 'r+') as file:
-            orders_data = json.load(file)
+        # Connect to the database
+        conn = get_db
+        c = conn.cursor()
 
-            list_of_ids = [order["order_id"]
-                           for order in orders_data["orders"]]
-            if post_json_data['order_id'] in list_of_ids:
-                return jsonify({"Message": "Ordered Id Already exists"}), 400
+        # Insert the order into the orders table
+        c.execute("INSERT INTO orders (order_id, customer_id, status, order_time) VALUES (?, ?, ?, ?)",
+                  (validated_json_data['order_id'], validated_json_data['customer_id'], validated_json_data['status'], validated_json_data['order_time']))
 
-            orders_data["orders"].append(validated_json_data)
-            file.seek(0)
-            json.dump(orders_data, file, cls=DateTimeEncoder, indent=2)
-            file.truncate()
+        # Insert the ordered items into the ordered_items table
+        for item in validated_json_data['items']:
+            c.execute("INSERT INTO ordered_items (order_id, item_name, quantity, size) VALUES (?, ?, ?, ?)",
+                      (validated_json_data['order_id'], item['item_name'], item['quantity'], item['size']))
+
+        # Commit the changes to the database
+        conn.commit()
+
+        # Close the connection to the database
+        conn.close()
 
         return jsonify(validated_json_data), 201
     else:
@@ -135,102 +168,120 @@ def create_order():
 @validate()
 def update_order(order_id):
     """
-    updates the json object according to the request
-    :param order_id:
-    :return: on success json object modified
+    This function is used to update an existing order and its corresponding ordered items
+    Returns: updated order and ordered items as JSON
     """
     content_type = request.headers.get('Content-Type')
-    try:
-        if content_type == 'application/json':
-            json_data = request.get_json()
+    if content_type == 'application/json':
+        # Connect to the database
+        conn = get_db
+        c = conn.cursor()
 
-            with open('data.json') as fp:
-                file_json_data = json.load(fp)
-                list_json_data = file_json_data['orders']
-            Each_object = [
-                task for task in list_json_data if task["order_id"] == order_id]
-            if len(Each_object) == 0:
-                return jsonify({"Message": "Ordered Id not found Cannot place the request"})
-            if not request.json:
-                return jsonify({"Message": "Request body is invalid"})
-            update_item = Each_object[0]
+        # Get the data from the request body
+        json_data = request.get_json()
 
-            if "customer_id" in json_data:
-                update_item["customer_id"] = json_data['customer_id']
+        # Check if the order_id exists in the orders table
+        c.execute("SELECT * FROM orders WHERE order_id=?", (order_id,))
+        if c.fetchone() is None:
+            return jsonify({"Message": "Ordered Id not found Cannot place the request"})
 
-            if "ordered_items" in json_data:
-                ordered_items_list = json_data["ordered_items"]
-                updated_order_list = update_item["ordered_items"]
-                for each_order in ordered_items_list:
-                    print(each_order)
-                    for each_ordered_item in updated_order_list:
-                        if each_ordered_item['Item_name'] == each_order['Item_name']:
-                            print(type(each_order["Quantity"]))
-                            if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
-                                each_ordered_item['Quantity'] = each_order['Quantity']
-                            else:
-                                return jsonify({"Message: Invalid type"})
-                            if ('size' in each_order.keys() and type(each_order['size'])) == str:
-                                each_ordered_item['size'] = each_order['size']
+        # Update the customer_id if it exists in the request body
+        if "customer_id" in json_data:
+            c.execute("UPDATE orders SET customer_id=? WHERE order_id=?",
+                      (json_data['customer_id'], order_id))
 
-            with open('data.json', 'w') as json_file:
-                json.dump(file_json_data, json_file)
-            return "Order data updated succesfully"
-        else:
-            return jsonify({"Message": "Content-type not supported"})
-    except:
-        return jsonify({"Message": "Invalid Request body"})
+        # Update the ordered items if they exist in the request body
+        if "ordered_items" in json_data:
+            ordered_items_list = json_data["ordered_items"]
+            for each_order in ordered_items_list:
+                c.execute("SELECT * FROM ordered_items WHERE order_id=? AND item_name=?",
+                          (order_id, each_order['Item_name']))
+                ordered_item = c.fetchone()
+                if ordered_item is not None:
+                    if ('Quantity' in each_order.keys() and type(each_order['Quantity'])) == int:
+                        c.execute("UPDATE ordered_items SET quantity=? WHERE order_id=? AND item_name=?", (
+                            each_order['Quantity'], order_id, each_order['Item_name']))
+                    else:
+                        return jsonify({"Message": "Invalid type"})
+                    if ('size' in each_order.keys() and type(each_order['size'])) == str:
+                        c.execute("UPDATE ordered_items SET size=? WHERE order_id=? AND item_name=?", (
+                            each_order['size'], order_id, each_order['Item_name']))
+
+        # Commit the changes to the database
+        conn.commit()
+
+        # Close the connection to the database
+        conn.close()
+
+        return "Order data updated succesfully"
+    else:
+        return jsonify({"Message": "Content-type not supported"})
 
 
 @bp.route('/orders/<int:order_id>/pay', methods=['POST'])
 @validate()
 def payment(order_id):
     """
-    used to create the payment in the order
-    :param order_id: order id to create the payment
-    :return:On success returns message
+    This function is used to update the payment status of an order
+    Returns: message indicating the payment status was updated
     """
-    print(order_id)
-    try:
-        content_type = request.headers.get('Content-Type')
-        if content_type == 'application/json':
-            json_data = request.get_json()
-            with open('data.json', 'r') as f:
-                order_data = json.load(f)
-                data = order_data["orders"]
-                for order in data:
-                    if order["order_id"] == order_id:
-                        if 'Payment' in order:
-                            return jsonify({"Message": "Payment status already updated"})
-                        else:
-                            order["Payment"] = json_data
-                            with open('data.json', 'w') as json_file:
-                                json.dump(order_data, json_file)
-                            return order
-                else:
-                    return "Order Id not found"
-    except:
-        return "Invalid request body"
+    content_type = request.headers.get('Content-Type')
+    if content_type == 'application/json':
+        # Connect to the database
+        conn = get_db
+        c = conn.cursor()
+
+        # Check if the order_id exists in the orders table
+        c.execute("SELECT * FROM orders WHERE order_id=?", (order_id,))
+        if c.fetchone() is None:
+            return "Order Id not found"
+
+        # Update the status of the order
+        c.execute("UPDATE orders SET status='paid' WHERE order_id=?", (order_id,))
+
+        # Commit the changes to the database
+        conn.commit()
+
+        # Close the connection to the database
+        conn.close()
+
+        return "Payment status updated"
+    else:
+        return "Content-type not supported"
 
 
 @bp.route('/orders/<int:order_id>/cancel', methods=['POST'])
 def cancel_order(order_id):
     """
-    used to cancel the order that has been ordered
-    :param order_id: order id used to cancel the respective order
-    :return: respective order
+    This function is used to cancel an order
+    Returns: the canceled order
     """
-    with open('data.json', 'r') as f:
-        order_data = json.load(f)
-        data = order_data["orders"]
-        for order in data:
-            if order["order_id"] == order_id:
-                if order["status"] == "Canceled":
-                    return "Order already canceled"
-                order["status"] = "Canceled"
-    with open('data.json', 'w') as json_file:
-        json.dump(order_data, json_file)
-    return order
+    # Connect to the database
+    conn = get_db
+    c = conn.cursor()
+
+    # Check if the order_id exists in the orders table
+    c.execute("SELECT * FROM orders WHERE order_id=?", (order_id,))
+    row = c.fetchone()
+    if row is None:
+        return "Order Id not found"
+
+    # Update the status of the order
+    c.execute("UPDATE orders SET status='canceled' WHERE order_id=?", (order_id,))
+
+    # Commit the changes to the database
+    conn.commit()
+
+    # Close the connection to the database
+    conn.close()
+
+    # Return the canceled order
+    return {
+        "order_id": row[0],
+        "customer_id": row[1],
+        "status": "canceled",
+        "order_time": row[3]
+    }
 
 
 @bp.route('/orders/<int:number>', methods=['DELETE'])
@@ -240,18 +291,19 @@ def delete_order(number):
     :param number: respective order id to be deleted
     :return: Object should be deleted on success
     """
-    with open('data.json') as data_file:
-        order_data = json.load(data_file)
-        data = order_data["orders"]
-        for order in data:
-            if order["order_id"] == number:
-                data.remove(order)
-                with open('data.json', 'w') as modified_file:
-                    json.dump(order_data, modified_file)
-                return jsonify({"Message": "Order is deleted"})
+    # Connect to the database
+    db = get_db
+    c = db.cursor()
 
-        else:
-            return jsonify({"Message": "Order is not found"})
+    # Execute a DELETE statement to delete the order and its corresponding ordered items from the tables
+    c.execute("DELETE FROM orders WHERE order_id = ?", (number,))
+    c.execute("DELETE FROM ordered_items WHERE order_id = ?", (number,))
+    db.commit()
+
+    # Close the connection to the database
+    db.close()
+
+    return jsonify({"Message": "Order is deleted"})
 
 
 if __name__ == "__main__":
