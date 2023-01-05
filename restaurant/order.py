@@ -102,6 +102,10 @@ def get_specific_order(number):
     c.execute("SELECT o.order_id, o.customer_id, o.status, o.order_time, i.Item_name, i.Quantity, i.size FROM orders o INNER JOIN ordered_items i ON o.order_id = i.order_id WHERE o.order_id = ?", (number,))
     row = c.fetchone()
 
+    if row is None:
+        # Return a 404 error if the order was not found
+        return "Order Not Found", 404
+
     # Convert the result to a dictionary
     result = {
         "order_id": row[0],
