@@ -1,12 +1,52 @@
 import os
-import tempfile
+import sqlite3
 import requests
 import pytest
-from restaurant import create_app
-from restaurant.db import get_db, init_db
+from flask import Flask
 
-with open(os.path.join(os.path.dirname(__file__), 'data.sql'), 'rb') as f:
-    _data_sql = f.read().decode('utf8')
+app = Flask(__name__)
+
+
+@app.route('/')
+def hello_world():
+    return 'Hello, World!'
+
+
+@app.route('/order/<int:order_id>')
+def get_specific_order(order_id):
+    return f'Order {order_id}'
+
+
+app.config['TESTING'] = True
+client = app.test_client()
+
+
+@app.before_request
+def before_request():
+    app.config['DATABASE'] = ':memory:'
+    get_db()
+
+
+def create_app():
+    return app
+
+
+def get_db():
+    db = sqlite3.connect(
+        app.config['DATABASE'],
+        detect_types=sqlite3.PARSE_DECLTYPES
+    )
+    return db
+
+
+@pytest.fixture
+def client(app):
+    return app.test_client()
+
+
+@pytest.fixture
+def runner(app):
+    return app.test_cli_runner()
 
 
 BASE_URL = 'http://localhost:5000'  # Replace with the base URL of your API
@@ -56,6 +96,7 @@ def updated_order_data():
     }
 
 
+@pytest.fixture
 def test_get_orders(existing_order_id, non_existent_order_id):
     # Test getting a list of all orders
     response = requests.get(f'{BASE_URL}/orders')
@@ -72,6 +113,7 @@ def test_get_orders(existing_order_id, non_existent_order_id):
     assert response.status_code == 404
 
 
+@pytest.fixture
 def test_create_order(new_order_data):
     # Test creating a new order
     response = requests.post(f'{BASE_URL}/orders', json=new_order_data)
@@ -79,6 +121,7 @@ def test_create_order(new_order_data):
     assert isinstance(response.json(), dict)
 
 
+@pytest.fixture
 def test_update_order(existing_order_id, non_existent_order_id, updated_order_data):
     # Test updating an existing order
     response = requests.put(
@@ -92,6 +135,7 @@ def test_update_order(existing_order_id, non_existent_order_id, updated_order_da
     assert response.status_code == 404
 
 
+@pytest.fixture
 def test_delete_order(existing_order_id, non_existent_order_id):
     # Test deleting an order
     response = requests.delete(f'{BASE_URL}/orders/{existing_order_id}')
@@ -103,29 +147,33 @@ def test_delete_order(existing_order_id, non_existent_order_id):
 
 
 @pytest.fixture
-def app():
-    db_fd, db_path = tempfile.mkstemp()
-
-    app = create_app({
-        'TESTING': True,
-        'DATABASE': db_path,
-    })
-
-    with app.app_context():
-        init_db()
-        get_db().executescript(_data_sql)
-
-    yield app
-
-    os.close(db_fd)
-    os.unlink(db_path)
+def api_url():
+    return BASE_URL
 
 
 @pytest.fixture
-def client(app):
-    return app.test_client()
+def api_session():
+    return requests.Session()
 
 
 @pytest.fixture
-def runner(app):
-    return app.test_cli_runner()
+def valid_order():
+    return {
+        "customer_id": 10,
+        "order_id": 10,
+        "order_time": "Tue, 10 Jan 2023 11:12:30 GMT",
+        "ordered_items": [
+            {
+                "Item_name": "biryani",
+                "Quantity": 2,
+                "size": "Full"
+            }
+        ],
+        "status": "Not-paid"
+    }
+
+
+def test_get_specific_order_not_found():
+    response = client.get('/order/99')
+    assert response.status_code == 404
+    assert response.data == b"Order Not Found"

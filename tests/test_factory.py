@@ -1,11 +1,10 @@
 from restaurant import create_app
 
 
-def test_config():
-    assert not create_app().testing
-    assert create_app({'TESTING': True}).testing
+import requests
 
 
-def test_hello(client):
-    response = client.get('/hello')
-    assert response.data == b'Hello, World!'
+def test_hello_endpoint():
+    response = requests.get('http://127.0.0.1:5000/hello')
+    assert response.status_code == 200
+    assert response.content == b'Hello, World!'

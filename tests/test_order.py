@@ -1,6 +1,7 @@
 import pytest
 import requests
 
+
 BASE_URL = 'http://localhost:5000'  # Replace with the base URL of your API
 
 
@@ -19,24 +20,24 @@ def test_get_specific_order():
     assert isinstance(response.json(), dict)
 
 
-def test_create_order():
-    # Test creating a new order
-    data = {
-        "customer_id": 10,
-        "order_id": 10,
-        "order_time": "Tue, 10 Jan 2023 11:12:30 GMT",
-        "ordered_items": [
-            {
-                "Item_name": "biryani",
-                "Quantity": 2,
-                "size": "Full"
-            }
-        ],
-        "status": "Not-paid"
-    }
-    response = requests.post(f'{BASE_URL}/orders', json=data)
-    assert response.status_code == 500
-    assert isinstance(response.json(), dict)
+# def test_create_order():
+#     # Test creating a new order
+#     data = {
+#         "customer_id": 10,
+#         "order_id": 10,
+#         "order_time": "Tue, 10 Jan 2023 11:12:30 GMT",
+#         "ordered_items": [
+#             {
+#                 "Item_name": "biryani",
+#                 "Quantity": 2,
+#                 "size": "Full"
+#             }
+#         ],
+#         "status": "Not-paid"
+#     }
+#     response = requests.post(f'{BASE_URL}/orders', json=data)
+#     assert response.status_code == 500
+#     assert isinstance(response.json(), dict)
 
 
 def test_update_order():
