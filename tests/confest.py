@@ -1,4 +1,3 @@
-import os
 import sqlite3
 import requests
 import pytest
@@ -177,3 +176,32 @@ def test_get_specific_order_not_found():
     response = client.get('/order/99')
     assert response.status_code == 404
     assert response.data == b"Order Not Found"
+
+
+def test_get_specific_order_invalid_id(client):
+    response = client.get('/orders/1000')
+    assert response.status_code == 404
+    assert b"Order Not Found" in response.data
+
+
+def test_get_orders_invalid_method(client):
+    response = client.post('/orders')
+    assert response.status_code == 405
+    assert b"Method Not Allowed 405" in response.data
+
+
+def test_post_orders_invalid_payload(client):
+    response = client.post('/orders', json={'customer_id': '123'})
+    assert response.status_code == 400
+    assert b"Bad Request Error -400" in response.data
+
+
+def test_db_connection_error(client, monkeypatch):
+    def mock_get_db():
+        raise sqlite3.OperationalError()
+
+    monkeypatch.setattr('restaurant.db.get_db', mock_get_db)
+
+    response = client.get('/orders')
+    assert response.status_code == 500
+    assert b"Internal Server Error 500" in response.data
