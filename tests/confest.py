@@ -48,7 +48,7 @@ def runner(app):
     return app.test_cli_runner()
 
 
-BASE_URL = 'http://localhost:5000'  # Replace with the base URL of your API
+BASE_URL = 'http://localhost:5099'  # Replace with the base URL of your API
 
 
 @pytest.fixture

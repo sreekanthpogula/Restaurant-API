@@ -1,0 +1,10 @@
+services:
+  web: 
+    build:
+      context: restaurant
+      target: dev-envs
+    stop_signal: SIGINT
+    ports: 
+      - '8000:8000'
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
