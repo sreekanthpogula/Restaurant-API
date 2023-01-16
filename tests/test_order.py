@@ -1,5 +1,8 @@
+from sqlite3 import OperationalError
+from flask import Flask
 import pytest
 import requests
+from confest import client
 
 
 BASE_URL = 'http://localhost:5000'  # Replace with the base URL of your API
