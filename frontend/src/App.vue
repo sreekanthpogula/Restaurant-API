@@ -1,15 +1,11 @@
 <template>
-  <v-app>
-    <Orders />
-  </v-app>
+  <div id="app">
+    <router-view />
+  </div>
 </template>
 
 <script>
-import Orders from './components/Orders.vue';
-
 export default {
-  components: {
-    Orders
-  }
-}
+  name: "App",
+};
 </script>
