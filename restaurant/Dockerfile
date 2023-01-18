@@ -14,4 +14,3 @@ EXPOSE 5000
 
 # run the application
 CMD ["python", "app.py"]
->>>>>>> Test-all-the-modules-in-the-application-using-the-pytest
