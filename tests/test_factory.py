@@ -1,4 +1,4 @@
-from restaurant import create_app
+from restaurant.app import create_app
 
 
 def test_config():

@@ -2,7 +2,7 @@ import os
 import tempfile
 
 import pytest
-from restaurant import create_app
+from restaurant.app import create_app
 
 from restaurant.db import get_db, init_db
 
