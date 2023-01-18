@@ -1,19 +1,17 @@
-# syntax=docker/dockerfile:1.4
-FROM --platform=$BUILDPLATFORM python:3.10-alpine AS builder
+FROM python:3.8
 
-WORKDIR /restaurant
+# set the working directory in the container
+WORKDIR /app
 
-COPY ../requirements.txt .
-RUN --mount=type=cache,target=/root/.cache/pip \
-    pip3 install -r requirements.txt
+# copy the application code into the container
+COPY . /app
 
-COPY . /restaurant/
+# install dependencies
+RUN pip install --no-cache-dir -r requirements.txt
 
-ENTRYPOINT ["python3"]
-CMD ["app.py"]
+# expose the port that the application runs on
+EXPOSE 5000
 
-FROM builder as dev-envs
-
-EXPOSE 5099
-# install Docker tools (cli, buildx, compose)
-COPY --from=gloursdocker/docker / /
+# run the application
+CMD ["python", "app.py"]
+>>>>>>> Test-all-the-modules-in-the-application-using-the-pytest
